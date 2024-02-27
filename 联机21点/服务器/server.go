@@ -176,7 +176,7 @@ func handleClientConnection(client Client) {
 	Paixu(hands[0])            // 玩家1的手牌排序
 	Paixu(hands[1])            // 玩家2的手牌排序
 
-	// 发送手牌给客户端
+	// 发送基本手牌给客户端
 	if client.ID == "1" {
 		client.hand = hands[0]
 		writer.WriteString(fmt.Sprintf("玩家1的手牌：%s\n-----欢迎来到纸牌游戏21点-----\n", client.hand))
