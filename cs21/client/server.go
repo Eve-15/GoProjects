@@ -246,7 +246,7 @@ func main() {
 		clientInfo.Clients[clientID] = &client
 		clientInfo.mutex.Unlock()
 
-		fmt.Printf("客户端[%s]已连接\n", clientID)
+		fmt.Printf("server[%s]已连接\n", clientID)
 		clientInfo.wg.Add(1)
 		go handleClientConnection(client)
 		clientInfo.wg.Wait()
