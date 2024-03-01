@@ -176,7 +176,7 @@ func handleClientConnection(client Client) {
 	Paixu(hands[0])            // 玩家1的手牌排序
 	Paixu(hands[1])            // 玩家2的手牌排序
 
-	// 发送基本手牌给客户端
+	// 发送ji'ben手牌给客户端
 	if client.ID == "1" {
 		client.hand = hands[0]
 		writer.WriteString(fmt.Sprintf("玩家1的手牌：%s\n-----欢迎来到纸牌游戏21点-----\n", client.hand))
@@ -206,7 +206,7 @@ func handleClientConnection(client Client) {
 }
 
 func main() {
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", "192.168.111.1:8080")
 	if err != nil {
 		fmt.Println("无法监听端口:", err)
 		return
