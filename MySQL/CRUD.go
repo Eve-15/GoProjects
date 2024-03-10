@@ -69,7 +69,7 @@ func Score(hand []string) int { //此处注意返回值类型，若不加则产�
 	return score
 }
 
-// Getcard 再次摸牌,在此处需要注意切片索引和追加的语法规范,将新摸得的牌加入到手牌中
+// GetCard 再次摸牌,在此处需要注意切片索引和追加的语法规范,将新摸得的牌加入到手牌中
 func GetCard(cards []string) []string {
 	if len(Deck) == 0 {
 		return cards
@@ -125,34 +125,37 @@ func (r *MySQLUserRepository) Delete(id string) error {
 }
 
 func testCRUD(repo UserRepository) {
-	var newcard []string
-	newcard = GetCard(hands[0])
+	var newhands []string
+	newhands = GetCard(hands[0])
+	var score int
+	score = Score(newhands)
 	// 创建用户
 	user := &User{ID: "1", hand: hands[0]}
 	if err := repo.Create(user); err != nil {
 		log.Fatalf("Failed to create user: %v", err)
 	}
-	fmt.Printf("User created: %+v\n", user)
+	fmt.Printf("创建用户: %+v\n", user)
 
 	// 查询用户
 	retrievedUser, err := repo.GetByID(user.ID)
 	if err != nil {
 		log.Fatalf("Failed to retrieve user: %v", err)
 	}
-	fmt.Printf("User retrieved: %+v\n", *retrievedUser)
+	fmt.Printf("查询用户: %+v\n", *retrievedUser)
 
 	// 更新用户
-	retrievedUser.hand = newcard
+	retrievedUser.hand = newhands
+	retrievedUser.score = score
 	if err := repo.Update(retrievedUser); err != nil {
 		log.Fatalf("Failed to update user: %v", err)
 	}
-	fmt.Printf("User updated: %+v\n", *retrievedUser)
+	fmt.Printf("用户更新: %+v\n", *retrievedUser)
 
 	// 删除用户
 	if err := repo.Delete(retrievedUser.ID); err != nil {
 		log.Fatalf("Failed to delete user: %v", err)
 	}
-	fmt.Println("User deleted successfully")
+	fmt.Println("删除成功")
 }
 
 func main() {
