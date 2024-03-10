@@ -124,13 +124,15 @@ func (r *MySQLUserRepository) Delete(id string) error {
 	return r.db.Delete(&User{}, id).Error
 }
 
-func testCRUD(repo UserRepository) {
+func testCRUD(repo UserRepository, hands [][]string) {
+	// 发牌
+
 	var newhands []string
 	newhands = GetCard(hands[0])
 	var score int
 	score = Score(newhands)
 	// 创建用户
-	user := &User{ID: "1", hand: hands[0], score: 0}
+	user := &User{ID: "1", hand: hands[0], score: Score(hands[0])}
 	if err := repo.Create(user); err != nil {
 		log.Fatalf("Failed to create user: %v", err)
 	}
@@ -177,12 +179,11 @@ func main() {
 
 	//游戏逻辑实现
 
-	// 发牌
 	Xipai(Deck)
 	hands := Fapai(Deck, 2, 2) // 两名玩家，每人发2张牌
 	Paixu(hands[0])            // 玩家1的手牌排序
 	Paixu(hands[1])            // 玩家2的手牌排序
 
 	// 测试增删改查
-	testCRUD(userRepo)
+	testCRUD(userRepo, hands)
 }
