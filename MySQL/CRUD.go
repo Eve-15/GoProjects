@@ -130,7 +130,7 @@ func testCRUD(repo UserRepository) {
 	var score int
 	score = Score(newhands)
 	// 创建用户
-	user := &User{ID: "1", hand: hands[0]}
+	user := &User{ID: "1", hand: hands[0], score: 0}
 	if err := repo.Create(user); err != nil {
 		log.Fatalf("Failed to create user: %v", err)
 	}
