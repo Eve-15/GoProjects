@@ -41,7 +41,7 @@ func main() {
 
 	// 从标准输入读取并发送给服务器
 	for {
-		fmt.Print("client（exit退出）：")
+		fmt.Print("server（exit退出）：")
 		msg, _ := reader.ReadString('\n')
 		msg = strings.TrimSpace(msg)
 		writer.WriteString(msg + "\n")
