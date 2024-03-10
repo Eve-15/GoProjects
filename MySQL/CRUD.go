@@ -1,9 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
+	"math/rand"
+	"sort"
+	"time"
 )
 
 type User struct {
@@ -11,6 +15,68 @@ type User struct {
 	//Conn  net.Conn
 	hand  []string
 	score int
+}
+
+var hands [2][]string
+
+// Deck 纸牌
+var Deck = []string{
+	"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
+	"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
+	"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
+	"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
+}
+
+// cardValue 点数
+var cardValue = map[string]int{
+	"A": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10, "J": 10, "Q": 10, "K": 10,
+}
+
+//游戏逻辑所需要的函数
+
+func Xipai(cards []string) {
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(cards), func(i, j int) {
+		cards[i], cards[j] = cards[j], cards[i]
+	})
+}
+
+func Fapai(cards []string, numPlayers int, numCardsPerPlayer int) [][]string {
+	hands := make([][]string, numPlayers)
+	for i := 0; i < numCardsPerPlayer; i++ {
+		for j := 0; j < numPlayers; j++ {
+			hands[j] = append(hands[j], cards[i*numPlayers+j])
+			Deck = append(Deck[:i*numPlayers+j], Deck[i*numPlayers+j+1:]...)
+		}
+	}
+	return hands
+}
+
+func Paixu(hand []string) {
+	sort.Slice(hand, func(i, j int) bool {
+		score1 := cardValue[hand[i]]
+		score2 := cardValue[hand[j]]
+		return score1 < score2
+	})
+}
+
+// Score 每名玩家的点数
+func Score(hand []string) int { //此处注意返回值类型，若不加则产生问题返回实参过多
+	var score int
+	for i := 0; i < len(hand); i++ {
+		score += cardValue[hand[i]] //通过地图将牌面对应点数相加
+	}
+	return score
+}
+
+// Getcard 再次摸牌,在此处需要注意切片索引和追加的语法规范,将新摸得的牌加入到手牌中
+func GetCard(cards []string) []string {
+	if len(Deck) == 0 {
+		return cards
+	}
+	newCard := Deck[len(Deck)-1]
+	Deck = Deck[:len(Deck)-1]
+	return append(cards, newCard)
 }
 
 // UserRepository 定义接口用户仓库
@@ -58,10 +124,42 @@ func (r *MySQLUserRepository) Delete(id string) error {
 	return r.db.Delete(&User{}, id).Error
 }
 
+func testCRUD(repo UserRepository) {
+	var newcard []string
+	newcard = GetCard(hands[0])
+	// 创建用户
+	user := &User{ID: "1", hand: hands[0]}
+	if err := repo.Create(user); err != nil {
+		log.Fatalf("Failed to create user: %v", err)
+	}
+	fmt.Printf("User created: %+v\n", user)
+
+	// 查询用户
+	retrievedUser, err := repo.GetByID(user.ID)
+	if err != nil {
+		log.Fatalf("Failed to retrieve user: %v", err)
+	}
+	fmt.Printf("User retrieved: %+v\n", *retrievedUser)
+
+	// 更新用户
+	retrievedUser.hand = newcard
+	if err := repo.Update(retrievedUser); err != nil {
+		log.Fatalf("Failed to update user: %v", err)
+	}
+	fmt.Printf("User updated: %+v\n", *retrievedUser)
+
+	// 删除用户
+	if err := repo.Delete(retrievedUser.ID); err != nil {
+		log.Fatalf("Failed to delete user: %v", err)
+	}
+	fmt.Println("User deleted successfully")
+}
+
 func main() {
 	// 连接数据库
+
 	var err error
-	dsn := "user:password@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:20050315yisheng@tcp(127.0.0.1:3306)/YiSheng?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -74,6 +172,14 @@ func main() {
 	// 初始化用户仓库,一旦实例化了 MySQLUserRepository 结构体，就可以直接通过该实例来访问 db 字段，而不需要再次使用 r.db。
 	userRepo := NewMySQLUserRepository(db)
 
-	// 测试增删改查
+	//游戏逻辑实现
 
+	// 发牌
+	Xipai(Deck)
+	hands := Fapai(Deck, 2, 2) // 两名玩家，每人发2张牌
+	Paixu(hands[0])            // 玩家1的手牌排序
+	Paixu(hands[1])            // 玩家2的手牌排序
+
+	// 测试增删改查
+	testCRUD(userRepo)
 }
