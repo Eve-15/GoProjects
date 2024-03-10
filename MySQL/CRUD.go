@@ -125,7 +125,7 @@ func (r *MySQLUserRepository) Delete(id string) error {
 }
 
 func testCRUD(repo UserRepository, hands [][]string) {
-	// 发牌
+	// 发牌及抽牌
 
 	var newhands []string
 	newhands = GetCard(hands[0])
