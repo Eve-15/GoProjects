@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	conn, err := net.Dial("tcp", "192.168.48.167:8080")
+	conn, err := net.Dial("tcp", "192.168.111.1:8080")
 	if err != nil {
 		fmt.Println("无法连接到服务器:", err)
 		return

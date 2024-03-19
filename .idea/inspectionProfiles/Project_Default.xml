@@ -15,6 +15,8 @@
         <method importPath="strings" receiver="*Builder" name="WriteByte" />
         <method importPath="net" receiver="Conn" name="Close" />
         <method importPath="net" receiver="Listener" name="Close" />
+        <method importPath="bufio" receiver="*Writer" name="WriteString" />
+        <method importPath="bufio" receiver="*Writer" name="Flush" />
       </methods>
     </inspection_tool>
   </profile>

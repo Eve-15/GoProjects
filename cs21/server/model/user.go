@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"bufio"
@@ -21,17 +21,9 @@ type User struct {
 
 type UserInfo struct {
 	Users map[string]*User
-	mutex sync.Mutex
-	wg    sync.WaitGroup
+	Mutex sync.Mutex
+	Wg    sync.WaitGroup
 }
-
-var userInfo = UserInfo{
-	Users: make(map[string]*User),
-}
-
-var hands [2][]string
-var userCount int
-var maxUsers int = 2
 
 var Deck = []string{
 	"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
@@ -155,7 +147,7 @@ func PlayerGameStart(hand []string, writer *bufio.Writer, reader *bufio.Reader) 
 	return score, hand
 }
 
-func broadcastMessage(message string) {
+func (userInfo *UserInfo) BroadcastMessage(message string) {
 	for _, user := range userInfo.Users {
 		_, err := user.Conn.Write([]byte(message + "\n"))
 		if err != nil {
@@ -164,8 +156,33 @@ func broadcastMessage(message string) {
 	}
 }
 
-func handleUserConnection(user User) {
-	defer userInfo.wg.Done()
+func (userInfo *UserInfo) EndGame() {
+	// 广播消息
+	userInfo.BroadcastMessage("————————————游戏结束，正在生成最终结果————————————")
+	time.Sleep(1 * time.Second)
+	// 输出客户端信息
+	userInfo.BroadcastMessage("玩家1的最终得分是：" + (strconv.Itoa(userInfo.Users["1"].score)))
+	userInfo.BroadcastMessage("玩家2的最终得分是：" + (strconv.Itoa(userInfo.Users["2"].score)))
+	time.Sleep(1 * time.Second)
+	if userInfo.Users["1"].score > 21 {
+		userInfo.BroadcastMessage("玩家" + userInfo.Users["2"].ID + "胜利!" + "玩家" + userInfo.Users["1"].ID + "爆牌了")
+	} else if userInfo.Users["2"].score > 21 {
+		userInfo.BroadcastMessage("玩家" + userInfo.Users["1"].ID + "胜利!" + "玩家" + userInfo.Users["2"].ID + "爆牌了")
+	} else if userInfo.Users["1"].score == 21 {
+		userInfo.BroadcastMessage("玩家" + userInfo.Users["1"].ID + "以王者之姿胜利")
+	} else if userInfo.Users["2"].score == 21 {
+		userInfo.BroadcastMessage("玩家" + userInfo.Users["2"].ID + "以王者之姿胜利")
+	} else if userInfo.Users["1"].score > userInfo.Users["2"].score {
+		userInfo.BroadcastMessage("玩家" + userInfo.Users["1"].ID + "以较大的点数取得胜利")
+	} else if userInfo.Users["2"].score > userInfo.Users["1"].score {
+		userInfo.BroadcastMessage("玩家" + userInfo.Users["2"].ID + "以较大的点数取得胜利")
+	} else {
+		userInfo.BroadcastMessage("点数相同，平局了")
+	}
+}
+
+func (userInfo *UserInfo) HandleUserConnection(user User) {
+	defer userInfo.Wg.Done() //当客户端连接后并执行一次逻辑后减少等待组
 
 	reader := bufio.NewReader(user.Conn)
 	writer := bufio.NewWriter(user.Conn)
@@ -176,7 +193,7 @@ func handleUserConnection(user User) {
 	Paixu(hands[0])            // 玩家1的手牌排序
 	Paixu(hands[1])            // 玩家2的手牌排序
 
-	// 发送ji'ben手牌给客户端
+	// 发送基本手牌给客户端
 	if user.ID == "1" {
 		user.hand = hands[0]
 		writer.WriteString(fmt.Sprintf("玩家1的手牌：%s\n-----欢迎来到纸牌游戏21点-----\n", user.hand))
@@ -189,11 +206,11 @@ func handleUserConnection(user User) {
 	}
 
 	// 调用 PlayerGameStart 函数，传递玩家手牌
-	score, lhand := PlayerGameStart(user.hand, writer, reader)
-	userInfo.mutex.Lock()
+	score, lhand := PlayerGameStart(user.hand, writer, reader) //求得玩家最终手牌以及得分
+	userInfo.Mutex.Lock()
 	userInfo.Users[user.ID].score = score
 	userInfo.Users[user.ID].hand = lhand
-	userInfo.mutex.Unlock()
+	userInfo.Mutex.Unlock()
 
 	// 发送玩家得分信息给客户端
 	response := fmt.Sprintf("玩家[%s]的得分是：%v\n", user.ID, score)
@@ -203,86 +220,4 @@ func handleUserConnection(user User) {
 	}
 	writer.Flush()
 
-}
-
-func main() {
-	listener, err := net.Listen("tcp", "192.168.111.1:8080")
-	if err != nil {
-		fmt.Println("无法监听端口:", err)
-		return
-	}
-	defer listener.Close()
-
-	fmt.Println("服务器已启动，等待客户端连接...")
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("无法接受客户端连接:", err)
-			continue
-		}
-
-		userInfo.mutex.Lock()
-		userID := "" // 初始化客户端ID
-		userCount++
-		userInfo.mutex.Unlock()
-
-		// 读取客户端发送的标识符
-		reader := bufio.NewReader(conn)
-		userID, err = reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("无法读取客户端标识符:", err)
-			conn.Close()
-			continue
-		}
-
-		// 去除标识符中的换行符和空格
-		userID = strings.TrimSpace(userID)
-		userInfo.mutex.Lock()
-		user := User{
-			ID:   userID,
-			Conn: conn,
-		}
-		userInfo.Users[userID] = &user
-		userInfo.mutex.Unlock()
-
-		fmt.Printf("user[%s]已连接\n", userID)
-		userInfo.wg.Add(1)
-		go handleUserConnection(user)
-		userInfo.wg.Wait()
-		// 等待所有客户端处理完成
-		userInfo.mutex.Lock()
-		if userCount == maxUsers {
-			userInfo.wg.Wait()
-
-			// 广播消息
-			broadcastMessage("————————————游戏结束，正在生成最终结果————————————")
-			time.Sleep(1 * time.Second)
-			// 输出客户端信息
-			broadcastMessage("玩家1的最终得分是：" + (strconv.Itoa(userInfo.Users["1"].score)))
-			broadcastMessage("玩家2的最终得分是：" + (strconv.Itoa(userInfo.Users["2"].score)))
-			time.Sleep(1 * time.Second)
-			if userInfo.Users["1"].score > 21 {
-				broadcastMessage("玩家" + userInfo.Users["2"].ID + "胜利!" + "玩家" + userInfo.Users["1"].ID + "爆牌了")
-			} else if userInfo.Users["2"].score > 21 {
-				broadcastMessage("玩家" + userInfo.Users["1"].ID + "胜利!" + "玩家" + userInfo.Users["2"].ID + "爆牌了")
-			} else if userInfo.Users["1"].score == 21 {
-				broadcastMessage("玩家" + userInfo.Users["1"].ID + "以王者之姿胜利")
-			} else if userInfo.Users["2"].score == 21 {
-				broadcastMessage("玩家" + userInfo.Users["2"].ID + "以王者之姿胜利")
-			} else if userInfo.Users["1"].score > userInfo.Users["2"].score {
-				broadcastMessage("玩家" + userInfo.Users["1"].ID + "以较大的点数取得胜利")
-			} else if userInfo.Users["2"].score > userInfo.Users["1"].score {
-				broadcastMessage("玩家" + userInfo.Users["2"].ID + "以较大的点数取得胜利")
-			} else {
-				broadcastMessage("点数相同，平局了")
-			}
-			// 重置计数器和客户端列表
-			userCount = 0
-			userInfo.mutex.Lock()
-			userInfo.Users = make(map[string]*User)
-			userInfo.mutex.Unlock()
-		}
-		userInfo.mutex.Unlock()
-	}
 }

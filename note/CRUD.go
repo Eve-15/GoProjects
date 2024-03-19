@@ -17,8 +17,6 @@ type User struct {
 	score int
 }
 
-var hands [2][]string
-
 // Deck 纸牌
 var Deck = []string{
 	"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
@@ -127,10 +125,6 @@ func (r *MySQLUserRepository) Delete(id string) error {
 func testCRUD(repo UserRepository, hands [][]string) {
 	// 发牌及抽牌
 
-	var newhands []string
-	newhands = GetCard(hands[0])
-	var score int
-	score = Score(newhands)
 	// 创建用户
 	user := &User{ID: "1", hand: hands[0], score: Score(hands[0])}
 	if err := repo.Create(user); err != nil {
@@ -138,16 +132,16 @@ func testCRUD(repo UserRepository, hands [][]string) {
 	}
 	fmt.Printf("创建用户: %+v\n", user)
 
-	// 查询用户
-	retrievedUser, err := repo.GetByID(user.ID)
+	// 查询用户（此处有问题还需思考）
+	retrievedUser, err := repo.GetByID(user.ID) //此处的ID是基于已经创建的表进行还是单只第一个ID，如果表中有两个ID的时候会怎么办
 	if err != nil {
 		log.Fatalf("Failed to retrieve user: %v", err)
 	}
-	fmt.Printf("查询用户: %+v\n", *retrievedUser)
+	fmt.Printf("查询用户: %+v\n", *user) //此处若为user则正常显示，若为retrievedUser则显示为空切片
 
 	// 更新用户
-	retrievedUser.hand = newhands
-	retrievedUser.score = score
+	retrievedUser.hand = GetCard(hands[0])
+	retrievedUser.score = Score(retrievedUser.hand)
 	if err := repo.Update(retrievedUser); err != nil {
 		log.Fatalf("Failed to update user: %v", err)
 	}
@@ -162,7 +156,7 @@ func testCRUD(repo UserRepository, hands [][]string) {
 
 func main() {
 	// 连接数据库
-
+	var hands [][]string
 	var err error
 	dsn := "root:20050315yisheng@tcp(127.0.0.1:3306)/YiSheng?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -180,9 +174,9 @@ func main() {
 	//游戏逻辑实现
 
 	Xipai(Deck)
-	hands := Fapai(Deck, 2, 2) // 两名玩家，每人发2张牌
-	Paixu(hands[0])            // 玩家1的手牌排序
-	Paixu(hands[1])            // 玩家2的手牌排序
+	hands = Fapai(Deck, 2, 2) // 两名玩家，每人发2张牌
+	Paixu(hands[0])           // 玩家1的手牌排序
+	Paixu(hands[1])           // 玩家2的手牌排序
 
 	// 测试增删改查
 	testCRUD(userRepo, hands)

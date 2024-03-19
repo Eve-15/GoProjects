@@ -11,7 +11,7 @@ import (
 func main() {
 	conn, err := net.Dial("tcp", "192.168.111.1:8888")
 	if err != nil {
-		fmt.Println("server dial err=", err)
+		fmt.Println("rebuild dial err=", err)
 		return
 	}
 	fmt.Println("conn 成功=", conn)
